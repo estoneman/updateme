@@ -3,7 +3,7 @@
 extern crate chrono;
 use chrono::{DateTime, Local};
 use clap::Parser;
-use json::{JsonValue, JsonError};
+use json::{JsonValue};
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::PathBuf;
@@ -68,7 +68,7 @@ fn meta() {
         file_path: get_meta_path(),
     };
 
-    println!("{}", metadata.read_file().unwrap());
+    print!("{}", metadata.read_file().unwrap());
 }
 
 fn last() {
