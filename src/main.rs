@@ -3,9 +3,9 @@
 extern crate chrono;
 use chrono::{DateTime, Local};
 use clap::Parser;
-use json::JsonValue;
+use json::{JsonValue, JsonError};
 use std::fs::File;
-use std::io::Read;
+use std::io::{self, Read};
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -19,29 +19,60 @@ struct Cli {
     command: Option<String>,
 }
 
-fn meta() {
+struct UpdatemeMetadata {
+    file_path: PathBuf,
+}
+
+impl UpdatemeMetadata {
+    fn read_file(&self) -> Result<String, io::Error> {
+        let display = &self.file_path.display();
+        let mut file = match File::open(&self.file_path) {
+            Err(why) => panic!("could not open {}: {}", display, why),
+            Ok(file) => file,
+        };
+
+        let mut file_contents = String::new();
+        match file.read_to_string(&mut file_contents) {
+            Err(why) => panic!("could not read {}: {}", display, why),
+            Ok(_) => (),
+        };
+
+        Ok(file_contents)
+    }
+
+    // fn parse_file(&self) -> Result<JsonValue, JsonError> {
+    //     todo!();
+    // }
+
+    // fn get_value(&self, key: String) -> Option<JsonValue> {
+    //     todo!();
+    // }
+}
+
+// TODO: implement function that reads meta file and returns the JsonValue associated w/ key
+//   -> like this: fn read(file_path, key)
+// TODO: implement function that formats a given DateTime
+//   -> like this: fn dt_format(str_to_format, datetime) variadic?
+
+fn get_meta_path() -> PathBuf {
     let mut meta_path = PathBuf::new();
     meta_path.push(UPDATEME_HOME);
     meta_path.push(META_FILE);
 
-    let display = meta_path.display();
+    meta_path
+}
 
-    let mut file = match File::open(&meta_path) {
-        Err(why) => panic!("could not open {}: {}", display, why),
-        Ok(file) => file,
+fn meta() {
+    let metadata = UpdatemeMetadata {
+        // file_path: "/usr/local/opt/updateme/meta.json",
+        file_path: get_meta_path(),
     };
 
-    let mut file_contents = String::new();
-    match file.read_to_string(&mut file_contents) {
-        Err(why) => panic!("could not read {}: {}", display, why),
-        Ok(_) => print!("{}", file_contents),
-    };
+    println!("{}", metadata.read_file().unwrap());
 }
 
 fn last() {
-    let mut meta_path = PathBuf::new();
-    meta_path.push(UPDATEME_HOME);
-    meta_path.push(META_FILE);
+    let meta_path = get_meta_path();
 
     let display = meta_path.display();
 
