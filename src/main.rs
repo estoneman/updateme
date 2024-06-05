@@ -1,170 +1,86 @@
-// vim: tabstop=4 shiftwidth=4 softtabstop=4 expandtab autoindent
+/*
+* cli program to run various commands related to updating my macos system
+*
+* program flow:
+*   1. parse command from cli arg
+*   2. execute correct function based on command
+*
+* commands:
+*   1. help: display help message containing commands and simple definition
+*   2. last: write to stdout last update time defined in <UPDATEME_HOME>/meta.json
+*   3. meta: read <UPDATEME_HOME>/meta.json and write to stdout
+*   4. update: run system commands defined by a file written in json
+*/
 
-extern crate chrono;
-use chrono::{DateTime, Local};
-use clap::Parser;
-use json::{JsonValue};
-use std::fs::File;
-use std::io::{self, Read};
-use std::path::PathBuf;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::env;
+use std::process::exit;
 
-const UPDATEME_HOME: &str = "/usr/local/opt/updateme";
-const META_FILE: &str = "meta.json";
-const MIN_ELAPSED: u64 = 43200;
+const COMMANDS: [&str; 4] = ["help", "last", "meta", "update"];
 
-#[derive(Parser)]
-struct Cli {
-    #[arg(value_name = "COMMAND", help = "last, meta, update (default)")]
-    command: Option<String>,
+enum Command {
+    Help,
+    Last,
+    Meta,
+    Update,
+    Unknown,
 }
 
-struct UpdatemeMetadata {
-    file_path: PathBuf,
-}
-
-impl UpdatemeMetadata {
-    fn read_file(&self) -> Result<String, io::Error> {
-        let display = &self.file_path.display();
-        let mut file = match File::open(&self.file_path) {
-            Err(why) => panic!("could not open {}: {}", display, why),
-            Ok(file) => file,
-        };
-
-        let mut file_contents = String::new();
-        match file.read_to_string(&mut file_contents) {
-            Err(why) => panic!("could not read {}: {}", display, why),
-            Ok(_) => (),
-        };
-
-        Ok(file_contents)
+impl From<&str> for Command {
+    fn from(s: &str) -> Self {
+        match s {
+            "help" => Command::Help,
+            "last" => Command::Last,
+            "meta" => Command::Meta,
+            "update" => Command::Update,
+            &_ => Command::Unknown,
+        }
     }
-
-    // fn parse_file(&self) -> Result<JsonValue, JsonError> {
-    //     todo!();
-    // }
-
-    // fn get_value(&self, key: String) -> Option<JsonValue> {
-    //     todo!();
-    // }
 }
 
-// TODO: implement function that reads meta file and returns the JsonValue associated w/ key
-//   -> like this: fn read(file_path, key)
-// TODO: implement function that formats a given DateTime
-//   -> like this: fn dt_format(str_to_format, datetime) variadic?
-
-fn get_meta_path() -> PathBuf {
-    let mut meta_path = PathBuf::new();
-    meta_path.push(UPDATEME_HOME);
-    meta_path.push(META_FILE);
-
-    meta_path
-}
-
-fn meta() {
-    let metadata = UpdatemeMetadata {
-        // file_path: "/usr/local/opt/updateme/meta.json",
-        file_path: get_meta_path(),
-    };
-
-    print!("{}", metadata.read_file().unwrap());
+fn help(program: &str) {
+    println!("usage: {} <command>\n", program);
+    println!("valid commands:");
+    for c in COMMANDS.iter() {
+        println!("  - {}", c)
+    }
 }
 
 fn last() {
-    let meta_path = get_meta_path();
+    assert!(1 == 0)
+}
 
-    let display = meta_path.display();
-
-    let mut file = match File::open(&meta_path) {
-        Err(why) => panic!("could not open {}: {}", display, why),
-        Ok(file) => file,
-    };
-
-    let mut file_contents = String::new();
-    match file.read_to_string(&mut file_contents) {
-        Err(why) => panic!("could not read {}: {}", display, why),
-        Ok(_) => (),
-    };
-
-    let update_t_epoch = match json::parse(&file_contents) {
-        Err(why) => panic!("could not parse {}: {}", display, why),
-        Ok(file_parsed) => match json::parse(&file_parsed["last_update"].to_string()) {
-            Err(why) => panic!("could not parse update time: {}", why),
-            Ok(JsonValue::Number(update_t_epoch)) => update_t_epoch,
-            _ => panic!("last_update field is not of type JsonValue::Number)"),
-        },
-    };
-
-    let (_, mantissa, _) = update_t_epoch.as_parts();
-    let update_t_sys: SystemTime = UNIX_EPOCH + Duration::from_secs(mantissa);
-    let datetime: DateTime<Local> = update_t_sys.into();
-
-    println!(
-        "Last update was: {}",
-        datetime.format("%a, %b %d %H:%M:%S(%Z) %Y")
-    );
+fn meta() {
+    assert!(1 == 0)
 }
 
 fn update() {
-    let mut meta_path = PathBuf::new();
-    meta_path.push(UPDATEME_HOME);
-    meta_path.push(META_FILE);
-
-    let display = meta_path.display();
-
-    let mut file = match File::open(&meta_path) {
-        Err(why) => panic!("could not open {}: {}", display, why),
-        Ok(file) => file,
-    };
-
-    let mut file_contents = String::new();
-    match file.read_to_string(&mut file_contents) {
-        Err(why) => panic!("could not read {}: {}", display, why),
-        Ok(_) => (),
-    };
-
-    let update_t_epoch = match json::parse(&file_contents) {
-        Err(why) => panic!("could not parse {}: {}", display, why),
-        Ok(file_parsed) => match json::parse(&file_parsed["last_update"].to_string()) {
-            Err(why) => panic!("could not parse update time: {}", why),
-            Ok(JsonValue::Number(update_t_epoch)) => update_t_epoch,
-            _ => panic!("last_update field is not of type JsonValue::Number)"),
-        },
-    };
-
-    let (_, mantissa, _) = update_t_epoch.as_parts();
-    let update_t_sys: SystemTime = UNIX_EPOCH + Duration::from_secs(mantissa);
-    let now = SystemTime::now();
-    let since = match now.duration_since(update_t_sys) {
-        Ok(since) => since.as_secs(),
-        Err(why) => panic!("could not parse system time: {}", why),
-    };
-
-    if since < MIN_ELAPSED {
-        let datetime: DateTime<Local> = update_t_sys.into();
-
-        println!(
-            "Last update was: {}\nplease wait at least {} hours",
-            datetime.format("%a, %b %d %H:%M:%S(%Z) %Y"),
-            MIN_ELAPSED / 3600,
-        );
-
-        return;
-    }
+    assert!(1 == 0)
 }
 
-// https://doc.rust-lang.org/book/ch12-01-accepting-command-line-arguments.html
-// https://rust-cli.github.io/book/tutorial/cli-args.html
 fn main() {
-    let args = Cli::parse();
+    // collect cli args
+    let args: Vec<String> = env::args().collect();
 
-    match args.command {
-        cmd @ Some(_) => match cmd.as_deref() {
-            Some("meta") => meta(),
-            Some("last") => last(),
-            _ => eprintln!("invalid command: {}", cmd.unwrap()),
-        },
-        None => update(),
+    // make sure we got a value back
+    let program = match args.get(0) {
+        Some(p) => p,
+        None => panic!("Unable to extract executable name from command line"),
+    };
+
+    let input = match args.get(1) {
+        Some(i) => i,
+        None => "unknown",
+    };
+
+    let command: Command = input.into();
+
+    match command {
+        Command::Last => last(),
+        Command::Meta => meta(),
+        Command::Update => update(),
+        Command::Help | Command::Unknown => {
+            help(program);
+            exit(1)
+        }
     }
 }
